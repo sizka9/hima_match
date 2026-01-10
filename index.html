@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シニア向け日程調整ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'メイリオ', Meiryo, sans-serif;
+            font-size: 18px;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .setup-screen, .main-screen {
+            display: none;
+        }
+
+        .setup-screen.active, .main-screen.active {
+            display: block;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        button {
+            width: 100%;
+            padding: 18px;
+            font-size: 20px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .event-title {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .calendar-container {
+            margin-top: 30px;
+        }
+
+        .month-section {
+            margin-bottom: 40px;
+        }
+
+        .month-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f0f4ff;
+            border-radius: 8px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .day-header {
+            text-align: center;
+            font-weight: bold;
+            padding: 10px 5px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .day-cell {
+            aspect-ratio: 1;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .day-cell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .day-cell.empty {
+            background: #f8f9fa;
+            cursor: default;
+            border: none;
+        }
+
+        .day-cell.empty:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .day-number {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .availability-count {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .day-cell.high-availability {
+            background: #ff6b6b;
+            border-color: #ff6b6b;
+            color: white;
+        }
+
+        .day-cell.high-availability .availability-count {
+            color: white;
+        }
+
+        .day-cell.medium-availability {
+            background: #ffa500;
+            border-color: #ffa500;
+            color: white;
+        }
+
+        .day-cell.medium-availability .availability-count {
+            color: white;
+        }
+
+        .day-cell.low-availability {
+            background: #ffd700;
+            border-color: #ffd700;
+            color: #333;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .time-slot-selector {
+            margin: 20px 0;
+        }
+
+        .time-slot {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 5px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 18px;
+        }
+
+        .time-slot:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .time-slot.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .close-btn {
+            background: #e74c3c;
+            margin-top: 20px;
+        }
+
+        .participants-list {
+            margin-top: 20px;
+        }
+
+        .participant-item {
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .participant-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .participant-times {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .participant-comment {
+            margin-top: 8px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            font-style: italic;
+            color: #555;
+        }
+
+        .summary {
+            background: #f0f4ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .summary-item {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .calendar-grid {
+                gap: 5px;
+            }
+
+            .day-number {
+                font-size: 16px;
+            }
+
+            .availability-count {
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- セットアップ画面 -->
+        <div class="setup-screen active">
+            <h1>📅 シニア向け日程調整ツール</h1>
+            <div class="input-group">
+                <label>イベント名を入力してください</label>
+                <input type="text" id="eventName" placeholder="例：カラオケ仲間、ゴルフ会、ランチ会">
+            </div>
+            <button onclick="createEvent()">イベントを作成</button>
+        </div>
+
+        <!-- メイン画面 -->
+        <div class="main-screen">
+            <h1>📅 日程調整ツール</h1>
+            <div class="event-title" id="displayEventName"></div>
+
+            <div class="summary" id="summary"></div>
+
+            <div class="input-group">
+                <label>あなたの名前</label>
+                <input type="text" id="userName" placeholder="名前を入力">
+            </div>
+
+            <div class="input-group">
+                <label>コメント（任意）</label>
+                <textarea id="userComment" placeholder="例：楽しみにしているね😊、今回は欠席ごめん🙏"></textarea>
+            </div>
+
+            <div class="calendar-container" id="calendarContainer"></div>
+        </div>
+    </div>
+
+    <!-- モーダル -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-header" id="modalHeader"></div>
+            <div class="time-slot-selector">
+                <div class="time-slot" data-time="morning">午前</div>
+                <div class="time-slot" data-time="afternoon">午後</div>
+                <div class="time-slot" data-time="evening">夜間</div>
+            </div>
+            <button onclick="saveAvailability()">予定を登録</button>
+            <button class="close-btn" onclick="closeModal()">閉じる</button>
+            
+            <div class="participants-list" id="participantsList"></div>
+        </div>
+    </div>
+
+    <script>
+        let eventData = {
+            name: '',
+            participants: {},
+            schedule: {}
+        };
+
+        let selectedDate = null;
+        let selectedTimes = [];
+
+        // ストレージからデータを読み込む
+        async function loadData() {
+            try {
+                const result = await window.storage.get('event-data', true);
+                if (result && result.value) {
+                    eventData = JSON.parse(result.value);
+                    return true;
+                }
+            } catch (e) {
+                console.log('新しいイベントを作成します');
+            }
+            return false;
+        }
+
+        // データを保存
+        async function saveData() {
+            try {
+                await window.storage.set('event-data', JSON.stringify(eventData), true);
+            } catch (e) {
+                console.error('保存エラー:', e);
+                alert('データの保存に失敗しました');
+            }
+        }
+
+        // イベント作成
+        async function createEvent() {
+            const name = document.getElementById('eventName').value.trim();
+            if (!name) {
+                alert('イベント名を入力してください');
+                return;
+            }
+
+            const hasData = await loadData();
+            
+            if (!hasData || !eventData.name) {
+                eventData = {
+                    name: name,
+                    participants: {},
+                    schedule: {}
+                };
+                await saveData();
+            }
+
+            document.getElementById('displayEventName').textContent = eventData.name;
+            document.querySelector('.setup-screen').classList.remove('active');
+            document.querySelector('.main-screen').classList.add('active');
+            
+            renderCalendar();
+            updateSummary();
+        }
+
+        // 初期化
+        async function init() {
+            const hasData = await loadData();
+            if (hasData && eventData.name) {
+                document.getElementById('displayEventName').textContent = eventData.name;
+                document.querySelector('.setup-screen').classList.remove('active');
+                document.querySelector('.main-screen').classList.add('active');
+                renderCalendar();
+                updateSummary();
+            }
+        }
+
+        // カレンダー描画
+        function renderCalendar() {
+            const container = document.getElementById('calendarContainer');
+            container.innerHTML = '';
+
+            const today = new Date();
+            const months = [];
+
+            for (let i = 0; i < 3; i++) {
+                const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
+                months.push(date);
+            }
+
+            months.forEach(month => {
+                const monthSection = document.createElement('div');
+                monthSection.className = 'month-section';
+
+                const monthTitle = document.createElement('div');
+                monthTitle.className = 'month-title';
+                monthTitle.textContent = `${month.getFullYear()}年 ${month.getMonth() + 1}月`;
+                monthSection.appendChild(monthTitle);
+
+                const grid = document.createElement('div');
+                grid.className = 'calendar-grid';
+
+                // 曜日ヘッダー
+                const days = ['日', '月', '火', '水', '木', '金', '土'];
+                days.forEach(day => {
+                    const header = document.createElement('div');
+                    header.className = 'day-header';
+                    header.textContent = day;
+                    grid.appendChild(header);
+                });
+
+                // 月の最初の日の曜日
+                const firstDay = month.getDay();
+                
+                // 空白セル
+                for (let i = 0; i < firstDay; i++) {
+                    const emptyCell = document.createElement('div');
+                    emptyCell.className = 'day-cell empty';
+                    grid.appendChild(emptyCell);
+                }
+
+                // 日付セル
+                const lastDate = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+                for (let day = 1; day <= lastDate; day++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'day-cell';
+                    
+                    const dateStr = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    
+                    const dayNumber = document.createElement('div');
+                    dayNumber.className = 'day-number';
+                    dayNumber.textContent = day;
+                    cell.appendChild(dayNumber);
+
+                    const count = document.createElement('div');
+                    count.className = 'availability-count';
+                    
+                    const availability = calculateAvailability(dateStr);
+                    if (availability.count > 0) {
+                        count.textContent = `${availability.count}人`;
+                        cell.classList.add(availability.level);
+                    }
+                    
+                    cell.appendChild(count);
+                    cell.onclick = () => openModal(dateStr);
+                    
+                    grid.appendChild(cell);
+                }
+
+                monthSection.appendChild(grid);
+                container.appendChild(monthSection);
+            });
+        }
+
+        // 利用可能人数と割合を計算
+        function calculateAvailability(date) {
+            const schedule = eventData.schedule[date] || {};
+            const totalParticipants = Object.keys(eventData.participants).length;
+            const availableCount = Object.keys(schedule).length;
+
+            if (totalParticipants === 0 || availableCount === 0) {
+                return { count: 0, level: '' };
+            }
+
+            const percentage = (availableCount / totalParticipants) * 100;
+
+            let level = '';
+            if (percentage >= 90) level = 'high-availability';
+            else if (percentage >= 80) level = 'medium-availability';
+            else if (percentage >= 70) level = 'low-availability';
+
+            return { count: availableCount, level };
+        }
+
+        // モーダルを開く
+        function openModal(date) {
+            selectedDate = date;
+            selectedTimes = [];
+            
+            const [year, month, day] = date.split('-');
+            document.getElementById('modalHeader').textContent = `${year}年${parseInt(month)}月${parseInt(day)}日`;
+            
+            // 時間帯選択をリセット
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                slot.classList.remove('selected');
+            });
+
+            // 参加者リストを表示
+            displayParticipants(date);
+
+            document.getElementById('modal').classList.add('active');
+        }
+
+        // 参加者リストを表示
+        function displayParticipants(date) {
+            const list = document.getElementById('participantsList');
+            const schedule = eventData.schedule[date] || {};
+            
+            if (Object.keys(schedule).length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">まだ予定を入れた人がいません</p>';
+                return;
+            }
+
+            list.innerHTML = '<h3 style="margin-top: 30px; margin-bottom: 15px;">この日の参加者</h3>';
+            
+            Object.entries(schedule).forEach(([name, data]) => {
+                const item = document.createElement('div');
+                item.className = 'participant-item';
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'participant-name';
+                nameDiv.textContent = name;
+                item.appendChild(nameDiv);
+
+                const timesDiv = document.createElement('div');
+                timesDiv.className = 'participant-times';
+                const timeLabels = {
+                    morning: '午前',
+                    afternoon: '午後',
+                    evening: '夜間'
+                };
+                timesDiv.textContent = `時間帯: ${data.times.map(t => timeLabels[t]).join('、')}`;
+                item.appendChild(timesDiv);
+
+                if (data.comment) {
+                    const commentDiv = document.createElement('div');
+                    commentDiv.className = 'participant-comment';
+                    commentDiv.textContent = `💬 ${data.comment}`;
+                    item.appendChild(commentDiv);
+                }
+
+                list.appendChild(item);
+            });
+        }
+
+        // 時間帯選択
+        document.querySelectorAll('.time-slot').forEach(slot => {
+            slot.addEventListener('click', function() {
+                this.classList.toggle('selected');
+                const time = this.dataset.time;
+                const index = selectedTimes.indexOf(time);
+                if (index > -1) {
+                    selectedTimes.splice(index, 1);
+                } else {
+                    selectedTimes.push(time);
+                }
+            });
+        });
+
+        // 予定を保存
+        async function saveAvailability() {
+            const name = document.getElementById('userName').value.trim();
+            const comment = document.getElementById('userComment').value.trim();
+
+            if (!name) {
+                alert('名前を入力してください');
+                return;
+            }
+
+            if (selectedTimes.length === 0) {
+                alert('時間帯を選択してください');
+                return;
+            }
+
+            // 参加者情報を保存
+            eventData.participants[name] = {
+                comment: comment
+            };
+
+            // スケジュールを保存
+            if (!eventData.schedule[selectedDate]) {
+                eventData.schedule[selectedDate] = {};
+            }
+            eventData.schedule[selectedDate][name] = {
+                times: selectedTimes,
+                comment: comment
+            };
+
+            await saveData();
+            
+            closeModal();
+            renderCalendar();
+            updateSummary();
+            
+            alert('予定を登録しました！');
+        }
+
+        // サマリーを更新
+        function updateSummary() {
+            const summary = document.getElementById('summary');
+            const totalParticipants = Object.keys(eventData.participants).length;
+            const totalDates = Object.keys(eventData.schedule).length;
+
+            summary.innerHTML = `
+                <div class="summary-item">📊 参加者数: <strong>${totalParticipants}人</strong></div>
+                <div class="summary-item">📅 予定が入っている日数: <strong>${totalDates}日</strong></div>
+            `;
+        }
+
+        // モーダルを閉じる
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        // 初期化実行
+        init();
+    </script>
+</body>
+</html>

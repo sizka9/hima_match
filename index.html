@@ -537,6 +537,7 @@
             </div>
 
             <!-- カレンダー -->
+            <h2>📅 カレンダー</h2>
             <div class="calendar-container" id="calendarContainer"></div>
 
             <!-- 名前・コメント入力欄（カレンダーの下） -->
@@ -584,7 +585,6 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, set, onValue, remove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
 
-        // Firebase設定
         const firebaseConfig = {
             apiKey: "AIzaSyBXYBt4_kTvDggr051_3G5Pc1mnOaznsCg",
             authDomain: "senior-schedule-94374.firebaseapp.com",
@@ -596,20 +596,17 @@
             measurementId: "G-PFZLQ7KF00"
         };
 
-        // Firebase初期化
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
-        // グローバル変数
         let eventData = {
             name: '',
             participants: {},
             schedule: {}
         };
 
-        let selectedDates = {}; // 複数日選択対応
+        let selectedDates = {};
 
-        // Firebaseからデータを読み込む
         function loadData() {
             const dataRef = ref(database, 'eventData');
             onValue(dataRef, (snapshot) => {
@@ -629,13 +626,11 @@
             });
         }
 
-        // Firebaseにデータを保存
         function saveData() {
             const dataRef = ref(database, 'eventData');
             return set(dataRef, eventData);
         }
 
-        // データをリセット
         function resetAll() {
             if (confirm('すべてのデータを削除してリセットしますか？')) {
                 const dataRef = ref(database, 'eventData');
@@ -653,19 +648,16 @@
             }
         }
 
-        // セットアップ画面を表示
         function showSetupScreen() {
             document.getElementById('setupScreen').classList.remove('hidden');
             document.getElementById('mainScreen').classList.remove('active');
         }
 
-        // メイン画面を表示
         function showMainScreen() {
             document.getElementById('setupScreen').classList.add('hidden');
             document.getElementById('mainScreen').classList.add('active');
         }
 
-        // イベント作成
         function createEvent() {
             const name = document.getElementById('eventName').value.trim();
             if (!name) {
@@ -680,7 +672,6 @@
             saveData();
         }
 
-        // 参加者リストを更新
         function updateParticipantsList() {
             const container = document.getElementById('participantsListMain');
             
@@ -730,7 +721,6 @@
             });
         }
 
-        // カレンダー描画（2ヶ月に変更）
         function renderCalendar() {
             const container = document.getElementById('calendarContainer');
             container.innerHTML = '';
@@ -738,7 +728,6 @@
             const today = new Date();
             const months = [];
 
-            // 2ヶ月分に変更
             for (let i = 0; i < 2; i++) {
                 const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
                 months.push(date);
@@ -806,7 +795,6 @@
             });
         }
 
-        // 利用可能人数と割合を計算
         function calculateAvailability(date) {
             const schedule = (eventData.schedule && eventData.schedule[date]) || {};
             const totalParticipants = eventData.participants ? Object.keys(eventData.participants).length : 0;
@@ -830,12 +818,10 @@
             return { count: availableCount, level: level };
         }
 
-        // モーダルを開く
         function openModal(date) {
             const [year, month, day] = date.split('-');
             document.getElementById('modalHeader').textContent = `${year}年${parseInt(month)}月${parseInt(day)}日`;
             
-            // 既存の選択状態を復元
             document.querySelectorAll('.time-slot').forEach(slot => {
                 if (selectedDates[date] && selectedDates[date].includes(slot.dataset.time)) {
                     slot.classList.add('selected');
@@ -844,7 +830,6 @@
                 }
             });
 
-            // 時間帯選択のイベント（この日付用）
             document.querySelectorAll('.time-slot').forEach(slot => {
                 slot.onclick = function() {
                     this.classList.toggle('selected');
@@ -861,17 +846,14 @@
                         selectedDates[date].push(time);
                     }
                     
-                    // 空配列なら削除
                     if (selectedDates[date].length === 0) {
                         delete selectedDates[date];
                     }
                 };
             });
 
-            // 参加者リストを表示
             displayParticipants(date);
 
-            // 保存ボタン
             document.getElementById('saveBtn').onclick = () => {
                 document.getElementById('modal').classList.remove('active');
             };
@@ -879,7 +861,6 @@
             document.getElementById('modal').classList.add('active');
         }
 
-        // 参加者リストを表示（モーダル内）
         function displayParticipants(date) {
             const list = document.getElementById('participantsList');
             const schedule = (eventData.schedule && eventData.schedule[date]) || {};
@@ -921,7 +902,6 @@
             });
         }
 
-        // 送信ボタンの処理
         function submitAvailability() {
             const name = document.getElementById('userName').value.trim();
             const comment = document.getElementById('userComment').value.trim();
@@ -943,7 +923,6 @@
                 comment: comment
             };
 
-            // 各日付のスケジュールを保存
             Object.entries(selectedDates).forEach(([date, times]) => {
                 if (!eventData.schedule[date]) {
                     eventData.schedule[date] = {};
@@ -956,16 +935,13 @@
 
             saveData()
                 .then(() => {
-                    // 成功メッセージを表示
                     const successMsg = document.getElementById('successMessage');
                     successMsg.classList.add('show');
                     
-                    // 入力欄をクリア
                     document.getElementById('userName').value = '';
                     document.getElementById('userComment').value = '';
                     selectedDates = {};
                     
-                    // 3秒後にメッセージを非表示
                     setTimeout(() => {
                         successMsg.classList.remove('show');
                     }, 3000);
@@ -976,7 +952,6 @@
                 });
         }
 
-        // サマリーを更新
         function updateSummary() {
             const summary = document.getElementById('summary');
             const totalParticipants = eventData.participants ? Object.keys(eventData.participants).length : 0;
@@ -988,12 +963,10 @@
             `;
         }
 
-        // モーダルを閉じる
         function closeModal() {
             document.getElementById('modal').classList.remove('active');
         }
 
-        // 初期化
         function init() {
             loadData();
 

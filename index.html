@@ -214,6 +214,13 @@
             font-style: italic;
         }
 
+        .name-input-section {
+            background: #f0f4ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
         .calendar-container {
             margin-top: 30px;
             margin-bottom: 30px;
@@ -317,11 +324,11 @@
             color: #333;
         }
 
-        .user-input-section {
+        .comment-section {
             background: #f8f9fa;
-            padding: 25px;
+            padding: 20px;
             border-radius: 10px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .submit-btn {
@@ -525,37 +532,40 @@
             <!-- 使い方説明 -->
             <div class="instructions">
                 <h3>📌 使い方</h3>
-                <p>カレンダーから<strong>空いている日</strong>をクリックして選択し、時間帯を選んでください。<br>
-                その後、下の名前・コメント欄に入力して「送信」ボタンを押してください！</p>
+                <p><strong>①名前を入力</strong> → <strong>②カレンダーから空いている日をクリック</strong>して時間帯を選択 → <strong>③コメント入力（任意）</strong> → <strong>④送信ボタン</strong>を押してください！</p>
             </div>
 
             <div class="summary" id="summary"></div>
 
-            <!-- カレンダー -->
-            <h2>📅 カレンダー</h2>
-            <div class="calendar-container" id="calendarContainer"></div>
-
-            <!-- 名前・コメント入力欄（カレンダーの下） -->
-            <div class="user-input-section">
-                <h2>✏️ あなたの情報を入力</h2>
+            <!-- ①名前入力欄 -->
+            <div class="name-input-section">
+                <h2>① あなたの名前を入力</h2>
                 <div class="input-group">
-                    <label>あなたの名前</label>
-                    <input type="text" id="userName" placeholder="名前を入力">
-                </div>
-
-                <div class="input-group">
-                    <label>コメント（任意）</label>
-                    <textarea id="userComment" placeholder="例：楽しみにしているね😊、今回は欠席ごめん🙏"></textarea>
-                </div>
-
-                <button class="submit-btn" id="submitBtn">送信</button>
-                
-                <div class="success-message" id="successMessage">
-                    ✅ 送信しました！予定が登録されました。
+                    <label>名前</label>
+                    <input type="text" id="userName" placeholder="名前を入力してください">
                 </div>
             </div>
 
-            <!-- 参加者リスト（送信ボタンの下） -->
+            <!-- ②カレンダー -->
+            <h2>② 空いている日を選択</h2>
+            <div class="calendar-container" id="calendarContainer"></div>
+
+            <!-- ③コメント欄 -->
+            <div class="comment-section">
+                <h2>③ コメント（任意）</h2>
+                <div class="input-group">
+                    <textarea id="userComment" placeholder="例：楽しみにしているね😊、今回は欠席ごめん🙏"></textarea>
+                </div>
+            </div>
+
+            <!-- ④送信ボタン -->
+            <button class="submit-btn" id="submitBtn">④ 送信</button>
+            
+            <div class="success-message" id="successMessage">
+                ✅ 送信しました！予定が登録されました。
+            </div>
+
+            <!-- 参加者リスト -->
             <div class="participants-section">
                 <h2>👥 参加者リスト</h2>
                 <div id="participantsListMain"></div>

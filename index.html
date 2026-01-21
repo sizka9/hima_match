@@ -38,11 +38,28 @@
             border-bottom: 3px solid #667eea;
         }
 
-        .setup-screen, .main-screen {
+        h2 {
+            font-size: 22px;
+            color: #667eea;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f0f4ff;
+            border-radius: 8px;
+        }
+
+        .setup-screen {
+            display: block;
+        }
+
+        .main-screen {
             display: none;
         }
 
-        .setup-screen.active, .main-screen.active {
+        .setup-screen.hidden {
+            display: none;
+        }
+
+        .main-screen.active {
             display: block;
         }
 
@@ -109,6 +126,71 @@
             text-align: center;
             font-size: 24px;
             font-weight: bold;
+        }
+
+        .summary {
+            background: #f0f4ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .summary-item {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+
+        .participants-section {
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .participant-card {
+            padding: 15px;
+            margin: 10px 0;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .participant-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .participant-name {
+            font-weight: bold;
+            font-size: 20px;
+            color: #333;
+        }
+
+        .participant-stats {
+            font-size: 14px;
+            color: #666;
+            background: #e3f2fd;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .participant-comment {
+            margin-top: 8px;
+            padding: 10px;
+            background: #f0f4ff;
+            border-radius: 5px;
+            font-style: italic;
+            color: #555;
+        }
+
+        .no-participants {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
         }
 
         .calendar-container {
@@ -307,7 +389,7 @@
             border-left: 4px solid #667eea;
         }
 
-        .participant-name {
+        .participant-name-modal {
             font-weight: bold;
             font-size: 18px;
             color: #333;
@@ -319,7 +401,7 @@
             font-size: 16px;
         }
 
-        .participant-comment {
+        .participant-comment-modal {
             margin-top: 8px;
             padding: 10px;
             background: white;
@@ -328,16 +410,16 @@
             color: #555;
         }
 
-        .summary {
-            background: #f0f4ff;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
+        .reset-btn {
+            background: #95a5a6;
+            margin-top: 20px;
         }
 
-        .summary-item {
-            font-size: 18px;
-            margin: 10px 0;
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 20px;
         }
 
         @media (max-width: 600px) {
@@ -366,21 +448,27 @@
 <body>
     <div class="container">
         <!-- セットアップ画面 -->
-        <div class="setup-screen active">
+        <div class="setup-screen" id="setupScreen">
             <h1>📅 シニア向け日程調整ツール</h1>
             <div class="input-group">
                 <label>イベント名を入力してください</label>
                 <input type="text" id="eventName" placeholder="例：カラオケ仲間、ゴルフ会、ランチ会">
             </div>
-            <button onclick="createEvent()">イベントを作成</button>
+            <button id="createEventBtn">イベントを作成</button>
         </div>
 
         <!-- メイン画面 -->
-        <div class="main-screen">
+        <div class="main-screen" id="mainScreen">
             <h1>📅 日程調整ツール</h1>
             <div class="event-title" id="displayEventName"></div>
 
             <div class="summary" id="summary"></div>
+
+            <!-- 参加者リスト -->
+            <div class="participants-section">
+                <h2>👥 参加者リスト</h2>
+                <div id="participantsListMain"></div>
+            </div>
 
             <div class="input-group">
                 <label>あなたの名前</label>
@@ -393,6 +481,8 @@
             </div>
 
             <div class="calendar-container" id="calendarContainer"></div>
+            
+            <button class="reset-btn" id="resetBtn">データをリセット</button>
         </div>
     </div>
 
@@ -400,19 +490,40 @@
     <div class="modal" id="modal">
         <div class="modal-content">
             <div class="modal-header" id="modalHeader"></div>
-            <div class="time-slot-selector">
+            <div class="time-slot-selector" id="timeSlotSelector">
                 <div class="time-slot" data-time="morning">午前</div>
                 <div class="time-slot" data-time="afternoon">午後</div>
                 <div class="time-slot" data-time="evening">夜間</div>
             </div>
-            <button onclick="saveAvailability()">予定を登録</button>
-            <button class="close-btn" onclick="closeModal()">閉じる</button>
+            <button id="saveBtn">予定を登録</button>
+            <button class="close-btn" id="closeBtn">閉じる</button>
             
             <div class="participants-list" id="participantsList"></div>
         </div>
     </div>
 
-    <script>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, onValue, remove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // Firebase設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXYBt4_kTvDggr051_3G5Pc1mnOaznsCg",
+            authDomain: "senior-schedule-94374.firebaseapp.com",
+            databaseURL: "https://senior-schedule-94374-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "senior-schedule-94374",
+            storageBucket: "senior-schedule-94374.firebasestorage.app",
+            messagingSenderId: "799050271607",
+            appId: "1:799050271607:web:b58ec7b774a3b5f149af72",
+            measurementId: "G-PFZLQ7KF00"
+        };
+
+        // Firebase初期化
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // グローバル変数
         let eventData = {
             name: '',
             participants: {},
@@ -422,67 +533,132 @@
         let selectedDate = null;
         let selectedTimes = [];
 
-        // ストレージからデータを読み込む
-        async function loadData() {
-            try {
-                const result = await window.storage.get('event-data', true);
-                if (result && result.value) {
-                    eventData = JSON.parse(result.value);
-                    return true;
+        // Firebaseからデータを読み込む
+        function loadData() {
+            const dataRef = ref(database, 'eventData');
+            onValue(dataRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    eventData = data;
+                    if (eventData.name) {
+                        document.getElementById('displayEventName').textContent = eventData.name;
+                        showMainScreen();
+                        renderCalendar();
+                        updateSummary();
+                        updateParticipantsList();
+                    }
+                } else {
+                    showSetupScreen();
                 }
-            } catch (e) {
-                console.log('新しいイベントを作成します');
-            }
-            return false;
+            });
         }
 
-        // データを保存
-        async function saveData() {
-            try {
-                await window.storage.set('event-data', JSON.stringify(eventData), true);
-            } catch (e) {
-                console.error('保存エラー:', e);
-                alert('データの保存に失敗しました');
+        // Firebaseにデータを保存
+        function saveData() {
+            const dataRef = ref(database, 'eventData');
+            set(dataRef, eventData)
+                .then(() => {
+                    console.log('データを保存しました');
+                })
+                .catch((error) => {
+                    console.error('保存エラー:', error);
+                    alert('データの保存に失敗しました');
+                });
+        }
+
+        // データをリセット
+        function resetAll() {
+            if (confirm('すべてのデータを削除してリセットしますか？')) {
+                const dataRef = ref(database, 'eventData');
+                remove(dataRef)
+                    .then(() => {
+                        eventData = {
+                            name: '',
+                            participants: {},
+                            schedule: {}
+                        };
+                        showSetupScreen();
+                        document.getElementById('eventName').value = '';
+                        alert('リセットしました');
+                    });
             }
+        }
+
+        // セットアップ画面を表示
+        function showSetupScreen() {
+            document.getElementById('setupScreen').classList.remove('hidden');
+            document.getElementById('mainScreen').classList.remove('active');
+        }
+
+        // メイン画面を表示
+        function showMainScreen() {
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('mainScreen').classList.add('active');
         }
 
         // イベント作成
-        async function createEvent() {
+        function createEvent() {
             const name = document.getElementById('eventName').value.trim();
             if (!name) {
                 alert('イベント名を入力してください');
                 return;
             }
 
-            const hasData = await loadData();
+            eventData.name = name;
+            if (!eventData.participants) eventData.participants = {};
+            if (!eventData.schedule) eventData.schedule = {};
             
-            if (!hasData || !eventData.name) {
-                eventData = {
-                    name: name,
-                    participants: {},
-                    schedule: {}
-                };
-                await saveData();
-            }
-
-            document.getElementById('displayEventName').textContent = eventData.name;
-            document.querySelector('.setup-screen').classList.remove('active');
-            document.querySelector('.main-screen').classList.add('active');
-            
-            renderCalendar();
-            updateSummary();
+            saveData();
         }
 
-        // 初期化
-        async function init() {
-            const hasData = await loadData();
-            if (hasData && eventData.name) {
-                document.getElementById('displayEventName').textContent = eventData.name;
-                document.querySelector('.setup-screen').classList.remove('active');
-                document.querySelector('.main-screen').classList.add('active');
-                renderCalendar();
-                updateSummary();
+        // 参加者リストを更新
+        function updateParticipantsList() {
+            const container = document.getElementById('participantsListMain');
+            
+            if (!eventData.participants || Object.keys(eventData.participants).length === 0) {
+                container.innerHTML = '<div class="no-participants">まだ参加者がいません</div>';
+                return;
             }
+
+            container.innerHTML = '';
+
+            Object.entries(eventData.participants).forEach(([name, data]) => {
+                let daysCount = 0;
+                if (eventData.schedule) {
+                    Object.values(eventData.schedule).forEach(daySchedule => {
+                        if (daySchedule && daySchedule[name]) {
+                            daysCount++;
+                        }
+                    });
+                }
+
+                const card = document.createElement('div');
+                card.className = 'participant-card';
+
+                const header = document.createElement('div');
+                header.className = 'participant-header';
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'participant-name';
+                nameDiv.textContent = name;
+
+                const stats = document.createElement('div');
+                stats.className = 'participant-stats';
+                stats.textContent = `📅 ${daysCount}日`;
+
+                header.appendChild(nameDiv);
+                header.appendChild(stats);
+                card.appendChild(header);
+
+                if (data.comment) {
+                    const comment = document.createElement('div');
+                    comment.className = 'participant-comment';
+                    comment.textContent = `💬 ${data.comment}`;
+                    card.appendChild(comment);
+                }
+
+                container.appendChild(card);
+            });
         }
 
         // カレンダー描画
@@ -510,7 +686,6 @@
                 const grid = document.createElement('div');
                 grid.className = 'calendar-grid';
 
-                // 曜日ヘッダー
                 const days = ['日', '月', '火', '水', '木', '金', '土'];
                 days.forEach(day => {
                     const header = document.createElement('div');
@@ -519,17 +694,14 @@
                     grid.appendChild(header);
                 });
 
-                // 月の最初の日の曜日
                 const firstDay = month.getDay();
                 
-                // 空白セル
                 for (let i = 0; i < firstDay; i++) {
                     const emptyCell = document.createElement('div');
                     emptyCell.className = 'day-cell empty';
                     grid.appendChild(emptyCell);
                 }
 
-                // 日付セル
                 const lastDate = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
                 for (let day = 1; day <= lastDate; day++) {
                     const cell = document.createElement('div');
@@ -548,11 +720,13 @@
                     const availability = calculateAvailability(dateStr);
                     if (availability.count > 0) {
                         count.textContent = `${availability.count}人`;
-                        cell.classList.add(availability.level);
+                        if (availability.level) {
+                            cell.classList.add(availability.level);
+                        }
                     }
                     
                     cell.appendChild(count);
-                    cell.onclick = () => openModal(dateStr);
+                    cell.addEventListener('click', () => openModal(dateStr));
                     
                     grid.appendChild(cell);
                 }
@@ -564,8 +738,8 @@
 
         // 利用可能人数と割合を計算
         function calculateAvailability(date) {
-            const schedule = eventData.schedule[date] || {};
-            const totalParticipants = Object.keys(eventData.participants).length;
+            const schedule = (eventData.schedule && eventData.schedule[date]) || {};
+            const totalParticipants = eventData.participants ? Object.keys(eventData.participants).length : 0;
             const availableCount = Object.keys(schedule).length;
 
             if (totalParticipants === 0 || availableCount === 0) {
@@ -575,11 +749,15 @@
             const percentage = (availableCount / totalParticipants) * 100;
 
             let level = '';
-            if (percentage >= 90) level = 'high-availability';
-            else if (percentage >= 80) level = 'medium-availability';
-            else if (percentage >= 70) level = 'low-availability';
+            if (percentage >= 90) {
+                level = 'high-availability';
+            } else if (percentage >= 80) {
+                level = 'medium-availability';
+            } else if (percentage >= 70) {
+                level = 'low-availability';
+            }
 
-            return { count: availableCount, level };
+            return { count: availableCount, level: level };
         }
 
         // モーダルを開く
@@ -590,21 +768,19 @@
             const [year, month, day] = date.split('-');
             document.getElementById('modalHeader').textContent = `${year}年${parseInt(month)}月${parseInt(day)}日`;
             
-            // 時間帯選択をリセット
             document.querySelectorAll('.time-slot').forEach(slot => {
                 slot.classList.remove('selected');
             });
 
-            // 参加者リストを表示
             displayParticipants(date);
 
             document.getElementById('modal').classList.add('active');
         }
 
-        // 参加者リストを表示
+        // 参加者リストを表示（モーダル内）
         function displayParticipants(date) {
             const list = document.getElementById('participantsList');
-            const schedule = eventData.schedule[date] || {};
+            const schedule = (eventData.schedule && eventData.schedule[date]) || {};
             
             if (Object.keys(schedule).length === 0) {
                 list.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">まだ予定を入れた人がいません</p>';
@@ -618,7 +794,7 @@
                 item.className = 'participant-item';
                 
                 const nameDiv = document.createElement('div');
-                nameDiv.className = 'participant-name';
+                nameDiv.className = 'participant-name-modal';
                 nameDiv.textContent = name;
                 item.appendChild(nameDiv);
 
@@ -634,7 +810,7 @@
 
                 if (data.comment) {
                     const commentDiv = document.createElement('div');
-                    commentDiv.className = 'participant-comment';
+                    commentDiv.className = 'participant-comment-modal';
                     commentDiv.textContent = `💬 ${data.comment}`;
                     item.appendChild(commentDiv);
                 }
@@ -643,22 +819,8 @@
             });
         }
 
-        // 時間帯選択
-        document.querySelectorAll('.time-slot').forEach(slot => {
-            slot.addEventListener('click', function() {
-                this.classList.toggle('selected');
-                const time = this.dataset.time;
-                const index = selectedTimes.indexOf(time);
-                if (index > -1) {
-                    selectedTimes.splice(index, 1);
-                } else {
-                    selectedTimes.push(time);
-                }
-            });
-        });
-
         // 予定を保存
-        async function saveAvailability() {
+        function saveAvailability() {
             const name = document.getElementById('userName').value.trim();
             const comment = document.getElementById('userComment').value.trim();
 
@@ -672,25 +834,24 @@
                 return;
             }
 
-            // 参加者情報を保存
+            if (!eventData.participants) eventData.participants = {};
+            if (!eventData.schedule) eventData.schedule = {};
+
             eventData.participants[name] = {
                 comment: comment
             };
 
-            // スケジュールを保存
             if (!eventData.schedule[selectedDate]) {
                 eventData.schedule[selectedDate] = {};
             }
             eventData.schedule[selectedDate][name] = {
-                times: selectedTimes,
+                times: selectedTimes.slice(),
                 comment: comment
             };
 
-            await saveData();
+            saveData();
             
             closeModal();
-            renderCalendar();
-            updateSummary();
             
             alert('予定を登録しました！');
         }
@@ -698,8 +859,8 @@
         // サマリーを更新
         function updateSummary() {
             const summary = document.getElementById('summary');
-            const totalParticipants = Object.keys(eventData.participants).length;
-            const totalDates = Object.keys(eventData.schedule).length;
+            const totalParticipants = eventData.participants ? Object.keys(eventData.participants).length : 0;
+            const totalDates = eventData.schedule ? Object.keys(eventData.schedule).length : 0;
 
             summary.innerHTML = `
                 <div class="summary-item">📊 参加者数: <strong>${totalParticipants}人</strong></div>
@@ -710,10 +871,41 @@
         // モーダルを閉じる
         function closeModal() {
             document.getElementById('modal').classList.remove('active');
+            selectedDate = null;
+            selectedTimes = [];
         }
 
-        // 初期化実行
-        init();
+        // 初期化
+        function init() {
+            loadData();
+
+            document.getElementById('createEventBtn').addEventListener('click', createEvent);
+            document.getElementById('resetBtn').addEventListener('click', resetAll);
+            document.getElementById('saveBtn').addEventListener('click', saveAvailability);
+            document.getElementById('closeBtn').addEventListener('click', closeModal);
+
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                slot.addEventListener('click', function() {
+                    this.classList.toggle('selected');
+                    const time = this.dataset.time;
+                    const index = selectedTimes.indexOf(time);
+                    if (index > -1) {
+                        selectedTimes.splice(index, 1);
+                    } else {
+                        selectedTimes.push(time);
+                    }
+                });
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+        // グローバルに公開（デバッグ用）
+        window.eventData = eventData;
     </script>
 </body>
 </html>

@@ -128,6 +128,26 @@
             font-weight: bold;
         }
 
+        .instructions {
+            background: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .instructions h3 {
+            font-size: 20px;
+            color: #f57c00;
+            margin-bottom: 10px;
+        }
+
+        .instructions p {
+            font-size: 18px;
+            color: #666;
+            line-height: 1.8;
+        }
+
         .summary {
             background: #f0f4ff;
             padding: 20px;
@@ -195,6 +215,7 @@
 
         .calendar-container {
             margin-top: 30px;
+            margin-bottom: 30px;
         }
 
         .month-section {
@@ -293,6 +314,23 @@
             background: #ffd700;
             border-color: #ffd700;
             color: #333;
+        }
+
+        .user-input-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            font-size: 22px;
+            padding: 20px;
+        }
+
+        .submit-btn:hover {
+            box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
         }
 
         .modal {
@@ -415,11 +453,32 @@
             margin-top: 20px;
         }
 
-        .loading {
+        .success-message {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
             text-align: center;
-            padding: 40px;
-            color: #667eea;
-            font-size: 20px;
+            font-weight: bold;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+            animation: slideDown 0.3s;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         @media (max-width: 600px) {
@@ -462,6 +521,13 @@
             <h1>📅 日程調整ツール</h1>
             <div class="event-title" id="displayEventName"></div>
 
+            <!-- 使い方説明 -->
+            <div class="instructions">
+                <h3>📌 使い方</h3>
+                <p>カレンダーから<strong>空いている日</strong>をクリックして選択し、時間帯を選んでください。<br>
+                その後、下の名前・コメント欄に入力して「送信」ボタンを押してください！</p>
+            </div>
+
             <div class="summary" id="summary"></div>
 
             <!-- 参加者リスト -->
@@ -470,17 +536,28 @@
                 <div id="participantsListMain"></div>
             </div>
 
-            <div class="input-group">
-                <label>あなたの名前</label>
-                <input type="text" id="userName" placeholder="名前を入力">
-            </div>
-
-            <div class="input-group">
-                <label>コメント（任意）</label>
-                <textarea id="userComment" placeholder="例：楽しみにしているね😊、今回は欠席ごめん🙏"></textarea>
-            </div>
-
+            <!-- カレンダー -->
             <div class="calendar-container" id="calendarContainer"></div>
+
+            <!-- 名前・コメント入力欄（カレンダーの下） -->
+            <div class="user-input-section">
+                <h2>✏️ あなたの情報を入力</h2>
+                <div class="input-group">
+                    <label>あなたの名前</label>
+                    <input type="text" id="userName" placeholder="名前を入力">
+                </div>
+
+                <div class="input-group">
+                    <label>コメント（任意）</label>
+                    <textarea id="userComment" placeholder="例：楽しみにしているね😊、今回は欠席ごめん🙏"></textarea>
+                </div>
+
+                <button class="submit-btn" id="submitBtn">送信</button>
+                
+                <div class="success-message" id="successMessage">
+                    ✅ 送信しました！予定が登録されました。
+                </div>
+            </div>
             
             <button class="reset-btn" id="resetBtn">データをリセット</button>
         </div>
@@ -495,7 +572,7 @@
                 <div class="time-slot" data-time="afternoon">午後</div>
                 <div class="time-slot" data-time="evening">夜間</div>
             </div>
-            <button id="saveBtn">予定を登録</button>
+            <button id="saveBtn">この日を選択</button>
             <button class="close-btn" id="closeBtn">閉じる</button>
             
             <div class="participants-list" id="participantsList"></div>
@@ -530,8 +607,7 @@
             schedule: {}
         };
 
-        let selectedDate = null;
-        let selectedTimes = [];
+        let selectedDates = {}; // 複数日選択対応
 
         // Firebaseからデータを読み込む
         function loadData() {
@@ -556,14 +632,7 @@
         // Firebaseにデータを保存
         function saveData() {
             const dataRef = ref(database, 'eventData');
-            set(dataRef, eventData)
-                .then(() => {
-                    console.log('データを保存しました');
-                })
-                .catch((error) => {
-                    console.error('保存エラー:', error);
-                    alert('データの保存に失敗しました');
-                });
+            return set(dataRef, eventData);
         }
 
         // データをリセット
@@ -661,7 +730,7 @@
             });
         }
 
-        // カレンダー描画
+        // カレンダー描画（2ヶ月に変更）
         function renderCalendar() {
             const container = document.getElementById('calendarContainer');
             container.innerHTML = '';
@@ -669,7 +738,8 @@
             const today = new Date();
             const months = [];
 
-            for (let i = 0; i < 3; i++) {
+            // 2ヶ月分に変更
+            for (let i = 0; i < 2; i++) {
                 const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
                 months.push(date);
             }
@@ -762,17 +832,49 @@
 
         // モーダルを開く
         function openModal(date) {
-            selectedDate = date;
-            selectedTimes = [];
-            
             const [year, month, day] = date.split('-');
             document.getElementById('modalHeader').textContent = `${year}年${parseInt(month)}月${parseInt(day)}日`;
             
+            // 既存の選択状態を復元
             document.querySelectorAll('.time-slot').forEach(slot => {
-                slot.classList.remove('selected');
+                if (selectedDates[date] && selectedDates[date].includes(slot.dataset.time)) {
+                    slot.classList.add('selected');
+                } else {
+                    slot.classList.remove('selected');
+                }
             });
 
+            // 時間帯選択のイベント（この日付用）
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                slot.onclick = function() {
+                    this.classList.toggle('selected');
+                    const time = this.dataset.time;
+                    
+                    if (!selectedDates[date]) {
+                        selectedDates[date] = [];
+                    }
+                    
+                    const index = selectedDates[date].indexOf(time);
+                    if (index > -1) {
+                        selectedDates[date].splice(index, 1);
+                    } else {
+                        selectedDates[date].push(time);
+                    }
+                    
+                    // 空配列なら削除
+                    if (selectedDates[date].length === 0) {
+                        delete selectedDates[date];
+                    }
+                };
+            });
+
+            // 参加者リストを表示
             displayParticipants(date);
+
+            // 保存ボタン
+            document.getElementById('saveBtn').onclick = () => {
+                document.getElementById('modal').classList.remove('active');
+            };
 
             document.getElementById('modal').classList.add('active');
         }
@@ -819,8 +921,8 @@
             });
         }
 
-        // 予定を保存
-        function saveAvailability() {
+        // 送信ボタンの処理
+        function submitAvailability() {
             const name = document.getElementById('userName').value.trim();
             const comment = document.getElementById('userComment').value.trim();
 
@@ -829,8 +931,8 @@
                 return;
             }
 
-            if (selectedTimes.length === 0) {
-                alert('時間帯を選択してください');
+            if (Object.keys(selectedDates).length === 0) {
+                alert('カレンダーから日付を選択してください');
                 return;
             }
 
@@ -841,19 +943,37 @@
                 comment: comment
             };
 
-            if (!eventData.schedule[selectedDate]) {
-                eventData.schedule[selectedDate] = {};
-            }
-            eventData.schedule[selectedDate][name] = {
-                times: selectedTimes.slice(),
-                comment: comment
-            };
+            // 各日付のスケジュールを保存
+            Object.entries(selectedDates).forEach(([date, times]) => {
+                if (!eventData.schedule[date]) {
+                    eventData.schedule[date] = {};
+                }
+                eventData.schedule[date][name] = {
+                    times: times.slice(),
+                    comment: comment
+                };
+            });
 
-            saveData();
-            
-            closeModal();
-            
-            alert('予定を登録しました！');
+            saveData()
+                .then(() => {
+                    // 成功メッセージを表示
+                    const successMsg = document.getElementById('successMessage');
+                    successMsg.classList.add('show');
+                    
+                    // 入力欄をクリア
+                    document.getElementById('userName').value = '';
+                    document.getElementById('userComment').value = '';
+                    selectedDates = {};
+                    
+                    // 3秒後にメッセージを非表示
+                    setTimeout(() => {
+                        successMsg.classList.remove('show');
+                    }, 3000);
+                })
+                .catch((error) => {
+                    alert('送信に失敗しました。もう一度お試しください。');
+                    console.error(error);
+                });
         }
 
         // サマリーを更新
@@ -871,8 +991,6 @@
         // モーダルを閉じる
         function closeModal() {
             document.getElementById('modal').classList.remove('active');
-            selectedDate = null;
-            selectedTimes = [];
         }
 
         // 初期化
@@ -881,21 +999,8 @@
 
             document.getElementById('createEventBtn').addEventListener('click', createEvent);
             document.getElementById('resetBtn').addEventListener('click', resetAll);
-            document.getElementById('saveBtn').addEventListener('click', saveAvailability);
+            document.getElementById('submitBtn').addEventListener('click', submitAvailability);
             document.getElementById('closeBtn').addEventListener('click', closeModal);
-
-            document.querySelectorAll('.time-slot').forEach(slot => {
-                slot.addEventListener('click', function() {
-                    this.classList.toggle('selected');
-                    const time = this.dataset.time;
-                    const index = selectedTimes.indexOf(time);
-                    if (index > -1) {
-                        selectedTimes.splice(index, 1);
-                    } else {
-                        selectedTimes.push(time);
-                    }
-                });
-            });
         }
 
         if (document.readyState === 'loading') {
@@ -903,9 +1008,6 @@
         } else {
             init();
         }
-
-        // グローバルに公開（デバッグ用）
-        window.eventData = eventData;
     </script>
 </body>
 </html>

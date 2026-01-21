@@ -162,6 +162,7 @@
 
         .participants-section {
             margin-bottom: 30px;
+            margin-top: 30px;
             background: #f8f9fa;
             padding: 20px;
             border-radius: 10px;
@@ -450,7 +451,7 @@
 
         .reset-btn {
             background: #95a5a6;
-            margin-top: 20px;
+            margin-top: 0;
         }
 
         .success-message {
@@ -530,12 +531,6 @@
 
             <div class="summary" id="summary"></div>
 
-            <!-- 参加者リスト -->
-            <div class="participants-section">
-                <h2>👥 参加者リスト</h2>
-                <div id="participantsListMain"></div>
-            </div>
-
             <!-- カレンダー -->
             <h2>📅 カレンダー</h2>
             <div class="calendar-container" id="calendarContainer"></div>
@@ -558,6 +553,12 @@
                 <div class="success-message" id="successMessage">
                     ✅ 送信しました！予定が登録されました。
                 </div>
+            </div>
+
+            <!-- 参加者リスト（送信ボタンの下） -->
+            <div class="participants-section">
+                <h2>👥 参加者リスト</h2>
+                <div id="participantsListMain"></div>
             </div>
             
             <button class="reset-btn" id="resetBtn">データをリセット</button>

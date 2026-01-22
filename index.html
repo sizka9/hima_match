@@ -714,17 +714,28 @@
                 const data = snapshot.val();
                 if (data) {
                     eventData = data;
-                    if (eventData.name) {
-                        document.getElementById('displayEventName').textContent = eventData.name;
+                    document.getElementById('displayEventName').textContent = eventData.name;
+                    const shareUrl = generateShareUrl(eventId);
+                    document.getElementById('shareUrl').value = shareUrl;
+                    showMainScreen();
+                    renderCalendar();
+                    updateSummary();
+                    updateParticipantsList();
+                } else {
+                    // イベントIDはあるがデータがない場合、新規イベントとして扱う
+                    const decodedName = decodeURIComponent(eventId);
+                    eventData.name = decodedName;
+                    eventData.participants = {};
+                    eventData.schedule = {};
+                    saveData(eventId).then(() => {
+                        document.getElementById('displayEventName').textContent = decodedName;
                         const shareUrl = generateShareUrl(eventId);
                         document.getElementById('shareUrl').value = shareUrl;
                         showMainScreen();
                         renderCalendar();
                         updateSummary();
                         updateParticipantsList();
-                    }
-                } else {
-                    showSetupScreen();
+                    });
                 }
             });
         }
@@ -1104,9 +1115,11 @@
             const eventId = getEventIdFromUrl();
             
             if (eventId) {
+                // URLにイベントIDがある場合、直接メイン画面へ
                 currentEventId = eventId;
                 loadData(eventId);
             } else {
+                // URLにイベントIDがない場合、セットアップ画面へ
                 showSetupScreen();
             }
 

@@ -265,6 +265,8 @@
         .calendar-container {
             margin-top: 30px;
             margin-bottom: 30px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .month-section {
@@ -283,9 +285,13 @@
 
         .calendar-grid {
             display: grid;
-            grid-template-columns: repeat(7, 1fr);
+            grid-template-columns: repeat(7, minmax(0, 1fr));
             gap: 8px;
             margin-bottom: 20px;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            align-items: start;
         }
 
         .day-header {
@@ -299,6 +305,7 @@
 
         .day-cell {
             aspect-ratio: 1;
+            min-width: 0;
             border: 2px solid #ddd;
             border-radius: 8px;
             padding: 5px;
@@ -310,6 +317,8 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
+            word-break: break-word;
         }
 
         .day-cell:hover {

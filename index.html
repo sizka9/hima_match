@@ -840,7 +840,6 @@
             }, 2000);
         }
 
-        // 名前入力時に既存の予定を読み込む
         function loadUserSchedule(userName) {
             if (!userName || !eventData.schedule) {
                 selectedDates = {};
@@ -850,14 +849,12 @@
 
             selectedDates = {};
             
-            // その名前で登録されている全ての日程を取得
             Object.entries(eventData.schedule).forEach(([date, daySchedule]) => {
                 if (daySchedule[userName]) {
                     selectedDates[date] = daySchedule[userName].times.slice();
                 }
             });
 
-            // コメントも復元
             if (eventData.participants && eventData.participants[userName]) {
                 document.getElementById('userComment').value = eventData.participants[userName].comment || '';
             }
@@ -876,7 +873,6 @@
                     document.getElementById('shareUrl').value = shareUrl;
                     showMainScreen();
                     
-                    // 名前が入力されていれば、その人の予定を読み込む
                     if (currentUserName) {
                         loadUserSchedule(currentUserName);
                     } else {
@@ -921,6 +917,7 @@
                         window.history.pushState({}, '', window.location.pathname);
                         showSetupScreen();
                         document.getElementById('eventName').value = '';
+                        currentEventId = null;
                         alert('リセットしました');
                     });
             }
@@ -951,11 +948,11 @@
             if (!eventData.schedule) eventData.schedule = {};
             
             saveData(eventId).then(() => {
-                const newUrl = generateShareUrl(eventId);
-                window.history.pushState({}, '', `?event=${eventId}`);
+                const newUrl = `?event=${eventId}`;
+                window.history.pushState({}, '', newUrl);
                 
                 document.getElementById('displayEventName').textContent = name;
-                document.getElementById('shareUrl').value = newUrl;
+                document.getElementById('shareUrl').value = generateShareUrl(eventId);
                 showMainScreen();
                 renderCalendar();
                 updateSummary();
@@ -1077,7 +1074,6 @@
                     
                     cell.appendChild(count);
 
-                    // 自分が選択している場合の表示
                     if (selectedDates[dateStr] && selectedDates[dateStr].length > 0) {
                         cell.classList.add('user-selected');
                         
@@ -1225,6 +1221,12 @@
                 return;
             }
 
+            if (!currentEventId) {
+                alert('エラー: イベントIDが見つかりません');
+                console.error('currentEventId is null');
+                return;
+            }
+
             if (!eventData.participants) eventData.participants = {};
             if (!eventData.schedule) eventData.schedule = {};
 
@@ -1232,18 +1234,15 @@
                 comment: comment
             };
 
-            // 既存の予定をクリア
             Object.keys(eventData.schedule).forEach(date => {
                 if (eventData.schedule[date] && eventData.schedule[date][name]) {
                     delete eventData.schedule[date][name];
-                    // その日に誰もいなくなったら日付ごと削除
                     if (Object.keys(eventData.schedule[date]).length === 0) {
                         delete eventData.schedule[date];
                     }
                 }
             });
 
-            // 新しい予定を保存
             Object.entries(selectedDates).forEach(([date, times]) => {
                 if (!eventData.schedule[date]) {
                     eventData.schedule[date] = {};
@@ -1254,8 +1253,12 @@
                 };
             });
 
+            console.log('Saving to eventId:', currentEventId);
+            console.log('Data to save:', eventData);
+
             saveData(currentEventId)
                 .then(() => {
+                    console.log('Save successful');
                     const successMsg = document.getElementById('successMessage');
                     successMsg.classList.add('show');
                     
@@ -1264,8 +1267,8 @@
                     }, 3000);
                 })
                 .catch((error) => {
+                    console.error('Save error:', error);
                     alert('送信に失敗しました。もう一度お試しください。');
-                    console.error(error);
                 });
         }
 
@@ -1289,6 +1292,7 @@
             
             if (eventId) {
                 currentEventId = eventId;
+                console.log('Loading event:', currentEventId);
                 loadData(eventId);
             } else {
                 showSetupScreen();
@@ -1300,7 +1304,6 @@
             document.getElementById('closeBtn').addEventListener('click', closeModal);
             document.getElementById('copyUrlBtn').addEventListener('click', copyUrl);
             
-            // 名前入力時に既存の予定を読み込む
             document.getElementById('userName').addEventListener('input', (e) => {
                 currentUserName = e.target.value.trim();
                 loadUserSchedule(currentUserName);

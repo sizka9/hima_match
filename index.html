@@ -284,24 +284,24 @@
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
+            gap: 4px;
             margin-bottom: 20px;
         }
 
         .day-header {
             text-align: center;
             font-weight: bold;
-            padding: 10px 5px;
+            padding: 8px 2px;
             background: #f8f9fa;
             border-radius: 5px;
-            font-size: 16px;
+            font-size: 14px;
         }
 
         .day-cell {
             aspect-ratio: 1;
             border: 2px solid #ddd;
             border-radius: 8px;
-            padding: 5px;
+            padding: 4px;
             cursor: pointer;
             transition: all 0.3s;
             background: white;
@@ -310,6 +310,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            min-height: 50px;
         }
 
         .day-cell:hover {
@@ -329,13 +330,13 @@
         }
 
         .day-number {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
 
         .availability-count {
-            font-size: 12px;
+            font-size: 11px;
             color: #666;
         }
 
@@ -531,24 +532,60 @@
         }
 
         @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
             .container {
-                padding: 20px;
+                padding: 15px;
+                border-radius: 15px;
             }
 
             h1 {
-                font-size: 24px;
+                font-size: 22px;
+                margin-bottom: 20px;
+                padding-bottom: 15px;
             }
 
-            .calendar-grid {
-                gap: 5px;
+            h2 {
+                font-size: 18px;
+                padding: 8px;
             }
 
-            .day-number {
+            .event-title {
+                font-size: 20px;
+                padding: 15px;
+            }
+
+            .instructions h3 {
+                font-size: 18px;
+            }
+
+            .instructions p {
                 font-size: 16px;
             }
 
+            .calendar-grid {
+                gap: 2px;
+            }
+
+            .day-header {
+                font-size: 12px;
+                padding: 6px 1px;
+            }
+
+            .day-cell {
+                min-height: 45px;
+                padding: 2px;
+                border-width: 1px;
+            }
+
+            .day-number {
+                font-size: 14px;
+            }
+
             .availability-count {
-                font-size: 11px;
+                font-size: 10px;
             }
 
             .url-display {
@@ -557,6 +594,68 @@
 
             .copy-btn {
                 width: 100%;
+            }
+
+            .url-share-section h3 {
+                font-size: 16px;
+            }
+
+            .url-input {
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            input[type="text"], textarea {
+                font-size: 16px;
+                padding: 12px;
+            }
+
+            button {
+                font-size: 18px;
+                padding: 15px;
+            }
+
+            .submit-btn {
+                font-size: 20px;
+            }
+
+            .participant-name {
+                font-size: 18px;
+            }
+
+            .month-title {
+                font-size: 18px;
+            }
+
+            .modal-content {
+                padding: 20px;
+            }
+
+            .time-slot {
+                font-size: 16px;
+                padding: 10px 20px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .container {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            .day-cell {
+                min-height: 40px;
+            }
+
+            .day-number {
+                font-size: 13px;
+            }
+
+            .availability-count {
+                font-size: 9px;
             }
         }
     </style>
@@ -677,23 +776,19 @@
         let selectedDates = {};
         let currentEventId = null;
 
-        // URLからイベントIDを取得
         function getEventIdFromUrl() {
             const params = new URLSearchParams(window.location.search);
             return params.get('event');
         }
 
-        // イベントIDを生成（日本語対応）
         function generateEventId(eventName) {
             return encodeURIComponent(eventName);
         }
 
-        // 共有URLを生成
         function generateShareUrl(eventId) {
             return `${window.location.origin}${window.location.pathname}?event=${eventId}`;
         }
 
-        // URLをコピー
         function copyUrl() {
             const urlInput = document.getElementById('shareUrl');
             urlInput.select();
@@ -707,7 +802,6 @@
             }, 2000);
         }
 
-        // Firebaseからデータを読み込む
         function loadData(eventId) {
             const dataRef = ref(database, `events/${eventId}`);
             onValue(dataRef, (snapshot) => {
@@ -722,7 +816,6 @@
                     updateSummary();
                     updateParticipantsList();
                 } else {
-                    // イベントIDはあるがデータがない場合、新規イベントとして扱う
                     const decodedName = decodeURIComponent(eventId);
                     eventData.name = decodedName;
                     eventData.participants = {};
@@ -740,13 +833,11 @@
             });
         }
 
-        // Firebaseにデータを保存
         function saveData(eventId) {
             const dataRef = ref(database, `events/${eventId}`);
             return set(dataRef, eventData);
         }
 
-        // データをリセット
         function resetAll() {
             if (confirm('このイベントのデータを削除してリセットしますか？')) {
                 const dataRef = ref(database, `events/${currentEventId}`);
@@ -757,7 +848,6 @@
                             participants: {},
                             schedule: {}
                         };
-                        // URLからイベントパラメータを削除
                         window.history.pushState({}, '', window.location.pathname);
                         showSetupScreen();
                         document.getElementById('eventName').value = '';
@@ -766,19 +856,16 @@
             }
         }
 
-        // セットアップ画面を表示
         function showSetupScreen() {
             document.getElementById('setupScreen').classList.remove('hidden');
             document.getElementById('mainScreen').classList.remove('active');
         }
 
-        // メイン画面を表示
         function showMainScreen() {
             document.getElementById('setupScreen').classList.add('hidden');
             document.getElementById('mainScreen').classList.add('active');
         }
 
-        // イベント作成
         function createEvent() {
             const name = document.getElementById('eventName').value.trim();
             if (!name) {
@@ -794,7 +881,6 @@
             if (!eventData.schedule) eventData.schedule = {};
             
             saveData(eventId).then(() => {
-                // URLにイベントIDを追加
                 const newUrl = generateShareUrl(eventId);
                 window.history.pushState({}, '', `?event=${eventId}`);
                 
@@ -807,7 +893,6 @@
             });
         }
 
-        // 参加者リストを更新
         function updateParticipantsList() {
             const container = document.getElementById('participantsListMain');
             
@@ -857,7 +942,6 @@
             });
         }
 
-        // カレンダー描画
         function renderCalendar() {
             const container = document.getElementById('calendarContainer');
             container.innerHTML = '';
@@ -932,7 +1016,6 @@
             });
         }
 
-        // 利用可能人数と割合を計算
         function calculateAvailability(date) {
             const schedule = (eventData.schedule && eventData.schedule[date]) || {};
             const totalParticipants = eventData.participants ? Object.keys(eventData.participants).length : 0;
@@ -956,7 +1039,6 @@
             return { count: availableCount, level: level };
         }
 
-        // モーダルを開く
         function openModal(date) {
             const [year, month, day] = date.split('-');
             document.getElementById('modalHeader').textContent = `${year}年${parseInt(month)}月${parseInt(day)}日`;
@@ -1000,7 +1082,6 @@
             document.getElementById('modal').classList.add('active');
         }
 
-        // 参加者リストを表示（モーダル内）
         function displayParticipants(date) {
             const list = document.getElementById('participantsList');
             const schedule = (eventData.schedule && eventData.schedule[date]) || {};
@@ -1042,7 +1123,6 @@
             });
         }
 
-        // 送信ボタンの処理
         function submitAvailability() {
             const name = document.getElementById('userName').value.trim();
             const comment = document.getElementById('userComment').value.trim();
@@ -1093,7 +1173,6 @@
                 });
         }
 
-        // サマリーを更新
         function updateSummary() {
             const summary = document.getElementById('summary');
             const totalParticipants = eventData.participants ? Object.keys(eventData.participants).length : 0;
@@ -1105,21 +1184,17 @@
             `;
         }
 
-        // モーダルを閉じる
         function closeModal() {
             document.getElementById('modal').classList.remove('active');
         }
 
-        // 初期化
         function init() {
             const eventId = getEventIdFromUrl();
             
             if (eventId) {
-                // URLにイベントIDがある場合、直接メイン画面へ
                 currentEventId = eventId;
                 loadData(eventId);
             } else {
-                // URLにイベントIDがない場合、セットアップ画面へ
                 showSetupScreen();
             }
 

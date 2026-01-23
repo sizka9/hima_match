@@ -329,7 +329,6 @@
             box-shadow: none;
         }
 
-        /* 自分が選択した日付のスタイル */
         .day-cell.user-selected {
             border: 3px solid #2196f3;
             background: #e3f2fd;
@@ -351,7 +350,6 @@
             color: #666;
         }
 
-        /* 選択した時間帯の表示 */
         .selected-times {
             font-size: 10px;
             color: #2196f3;
@@ -386,7 +384,6 @@
             color: #333;
         }
 
-        /* 選択状態で他の色がついている場合 */
         .day-cell.user-selected.high-availability,
         .day-cell.user-selected.medium-availability,
         .day-cell.user-selected.low-availability {
@@ -815,6 +812,7 @@
 
         let selectedDates = {};
         let currentEventId = null;
+        let currentUserName = '';
 
         function getEventIdFromUrl() {
             const params = new URLSearchParams(window.location.search);
@@ -842,6 +840,31 @@
             }, 2000);
         }
 
+        // 名前入力時に既存の予定を読み込む
+        function loadUserSchedule(userName) {
+            if (!userName || !eventData.schedule) {
+                selectedDates = {};
+                renderCalendar();
+                return;
+            }
+
+            selectedDates = {};
+            
+            // その名前で登録されている全ての日程を取得
+            Object.entries(eventData.schedule).forEach(([date, daySchedule]) => {
+                if (daySchedule[userName]) {
+                    selectedDates[date] = daySchedule[userName].times.slice();
+                }
+            });
+
+            // コメントも復元
+            if (eventData.participants && eventData.participants[userName]) {
+                document.getElementById('userComment').value = eventData.participants[userName].comment || '';
+            }
+
+            renderCalendar();
+        }
+
         function loadData(eventId) {
             const dataRef = ref(database, `events/${eventId}`);
             onValue(dataRef, (snapshot) => {
@@ -852,7 +875,14 @@
                     const shareUrl = generateShareUrl(eventId);
                     document.getElementById('shareUrl').value = shareUrl;
                     showMainScreen();
-                    renderCalendar();
+                    
+                    // 名前が入力されていれば、その人の予定を読み込む
+                    if (currentUserName) {
+                        loadUserSchedule(currentUserName);
+                    } else {
+                        renderCalendar();
+                    }
+                    
                     updateSummary();
                     updateParticipantsList();
                 } else {
@@ -1134,7 +1164,6 @@
 
             document.getElementById('saveBtn').onclick = () => {
                 document.getElementById('modal').classList.remove('active');
-                // モーダルを閉じた後、カレンダーを再描画して選択状態を表示
                 renderCalendar();
             };
 
@@ -1203,6 +1232,18 @@
                 comment: comment
             };
 
+            // 既存の予定をクリア
+            Object.keys(eventData.schedule).forEach(date => {
+                if (eventData.schedule[date] && eventData.schedule[date][name]) {
+                    delete eventData.schedule[date][name];
+                    // その日に誰もいなくなったら日付ごと削除
+                    if (Object.keys(eventData.schedule[date]).length === 0) {
+                        delete eventData.schedule[date];
+                    }
+                }
+            });
+
+            // 新しい予定を保存
             Object.entries(selectedDates).forEach(([date, times]) => {
                 if (!eventData.schedule[date]) {
                     eventData.schedule[date] = {};
@@ -1217,13 +1258,6 @@
                 .then(() => {
                     const successMsg = document.getElementById('successMessage');
                     successMsg.classList.add('show');
-                    
-                    document.getElementById('userName').value = '';
-                    document.getElementById('userComment').value = '';
-                    selectedDates = {};
-                    
-                    // 送信後、カレンダーを再描画して選択状態をクリア
-                    renderCalendar();
                     
                     setTimeout(() => {
                         successMsg.classList.remove('show');
@@ -1265,6 +1299,12 @@
             document.getElementById('submitBtn').addEventListener('click', submitAvailability);
             document.getElementById('closeBtn').addEventListener('click', closeModal);
             document.getElementById('copyUrlBtn').addEventListener('click', copyUrl);
+            
+            // 名前入力時に既存の予定を読み込む
+            document.getElementById('userName').addEventListener('input', (e) => {
+                currentUserName = e.target.value.trim();
+                loadUserSchedule(currentUserName);
+            });
         }
 
         if (document.readyState === 'loading') {

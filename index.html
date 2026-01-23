@@ -329,6 +329,17 @@
             box-shadow: none;
         }
 
+        /* 自分が選択した日付のスタイル */
+        .day-cell.user-selected {
+            border: 3px solid #2196f3;
+            background: #e3f2fd;
+            box-shadow: 0 0 10px rgba(33, 150, 243, 0.3);
+        }
+
+        .day-cell.user-selected:hover {
+            transform: scale(1.05);
+        }
+
         .day-number {
             font-size: 16px;
             font-weight: bold;
@@ -338,6 +349,15 @@
         .availability-count {
             font-size: 11px;
             color: #666;
+        }
+
+        /* 選択した時間帯の表示 */
+        .selected-times {
+            font-size: 10px;
+            color: #2196f3;
+            font-weight: bold;
+            margin-top: 2px;
+            text-align: center;
         }
 
         .day-cell.high-availability {
@@ -364,6 +384,14 @@
             background: #ffd700;
             border-color: #ffd700;
             color: #333;
+        }
+
+        /* 選択状態で他の色がついている場合 */
+        .day-cell.user-selected.high-availability,
+        .day-cell.user-selected.medium-availability,
+        .day-cell.user-selected.low-availability {
+            border: 3px solid #2196f3;
+            box-shadow: 0 0 10px rgba(33, 150, 243, 0.5);
         }
 
         .comment-section {
@@ -580,12 +608,20 @@
                 border-width: 1px;
             }
 
+            .day-cell.user-selected {
+                border-width: 2px;
+            }
+
             .day-number {
                 font-size: 14px;
             }
 
             .availability-count {
                 font-size: 10px;
+            }
+
+            .selected-times {
+                font-size: 9px;
             }
 
             .url-display {
@@ -656,6 +692,10 @@
 
             .availability-count {
                 font-size: 9px;
+            }
+
+            .selected-times {
+                font-size: 8px;
             }
         }
     </style>
@@ -1006,6 +1046,23 @@
                     }
                     
                     cell.appendChild(count);
+
+                    // 自分が選択している場合の表示
+                    if (selectedDates[dateStr] && selectedDates[dateStr].length > 0) {
+                        cell.classList.add('user-selected');
+                        
+                        const timeLabels = {
+                            morning: '午前',
+                            afternoon: '午後',
+                            evening: '夜間'
+                        };
+                        
+                        const selectedTimesDiv = document.createElement('div');
+                        selectedTimesDiv.className = 'selected-times';
+                        selectedTimesDiv.textContent = selectedDates[dateStr].map(t => timeLabels[t]).join('・');
+                        cell.appendChild(selectedTimesDiv);
+                    }
+                    
                     cell.addEventListener('click', () => openModal(dateStr));
                     
                     grid.appendChild(cell);
@@ -1077,6 +1134,8 @@
 
             document.getElementById('saveBtn').onclick = () => {
                 document.getElementById('modal').classList.remove('active');
+                // モーダルを閉じた後、カレンダーを再描画して選択状態を表示
+                renderCalendar();
             };
 
             document.getElementById('modal').classList.add('active');
@@ -1162,6 +1221,9 @@
                     document.getElementById('userName').value = '';
                     document.getElementById('userComment').value = '';
                     selectedDates = {};
+                    
+                    // 送信後、カレンダーを再描画して選択状態をクリア
+                    renderCalendar();
                     
                     setTimeout(() => {
                         successMsg.classList.remove('show');

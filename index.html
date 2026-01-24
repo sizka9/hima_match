@@ -816,7 +816,9 @@
 
         function getEventIdFromUrl() {
             const params = new URLSearchParams(window.location.search);
-            return params.get('event');
+            const eventParam = params.get('event');
+            // URLがデコードされている場合があるので、再度エンコード
+            return eventParam ? encodeURIComponent(eventParam) : null;
         }
 
         function generateEventId(eventName) {

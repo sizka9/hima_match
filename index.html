@@ -841,6 +841,9 @@
         }
 
         function loadUserSchedule(userName) {
+            console.log('loadUserSchedule called for:', userName);
+            console.log('Current eventData.schedule:', eventData.schedule);
+            
             if (!userName || !eventData.schedule) {
                 selectedDates = {};
                 renderCalendar();
@@ -855,6 +858,8 @@
                 }
             });
 
+            console.log('Selected dates for user:', selectedDates);
+
             if (eventData.participants && eventData.participants[userName]) {
                 document.getElementById('userComment').value = eventData.participants[userName].comment || '';
             }
@@ -863,11 +868,18 @@
         }
 
         function loadData(eventId) {
+            console.log('Loading event:', eventId);
             const dataRef = ref(database, `events/${eventId}`);
             onValue(dataRef, (snapshot) => {
                 const data = snapshot.val();
+                console.log('Loaded from Firebase:', data);
+                
                 if (data) {
                     eventData = data;
+                    console.log('eventData after load:', eventData);
+                    console.log('participants:', eventData.participants);
+                    console.log('schedule:', eventData.schedule);
+                    
                     document.getElementById('displayEventName').textContent = eventData.name;
                     const shareUrl = generateShareUrl(eventId);
                     document.getElementById('shareUrl').value = shareUrl;
@@ -882,6 +894,7 @@
                     updateSummary();
                     updateParticipantsList();
                 } else {
+                    console.log('No data found, creating new event');
                     const decodedName = decodeURIComponent(eventId);
                     eventData.name = decodedName;
                     eventData.participants = {};
@@ -896,6 +909,8 @@
                         updateParticipantsList();
                     });
                 }
+            }, (error) => {
+                console.error('Firebase read error:', error);
             });
         }
 
@@ -961,6 +976,9 @@
         }
 
         function updateParticipantsList() {
+            console.log('updateParticipantsList called');
+            console.log('participants:', eventData.participants);
+            
             const container = document.getElementById('participantsListMain');
             
             if (!eventData.participants || Object.keys(eventData.participants).length === 0) {
@@ -1010,6 +1028,9 @@
         }
 
         function renderCalendar() {
+            console.log('renderCalendar called');
+            console.log('selectedDates:', selectedDates);
+            
             const container = document.getElementById('calendarContainer');
             container.innerHTML = '';
 
@@ -1292,7 +1313,7 @@
             
             if (eventId) {
                 currentEventId = eventId;
-                console.log('Loading event:', currentEventId);
+                console.log('Initializing with event:', currentEventId);
                 loadData(eventId);
             } else {
                 showSetupScreen();

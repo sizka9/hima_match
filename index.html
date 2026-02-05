@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📅ヒマな日おしえて 日程調整</title>
+    <title>シニア向け日程調整ツール</title>
     <style>
         * {
             margin: 0;
@@ -701,17 +701,17 @@
     <div class="container">
         <!-- セットアップ画面 -->
         <div class="setup-screen" id="setupScreen">
-            <h1>📅ヒマな日おしえて 日程調整</h1>
+            <h1>📅 シニア向け日程調整ツール</h1>
             <div class="input-group">
                 <label>イベント名を入力してください</label>
-                <input type="text" id="eventName" placeholder="例：お花見会、マージャン大会、おしゃべりの日">
+                <input type="text" id="eventName" placeholder="例：カラオケ仲間、ゴルフ会、ランチ会">
             </div>
             <button id="createEventBtn">イベントを作成</button>
         </div>
 
         <!-- メイン画面 -->
         <div class="main-screen" id="mainScreen">
-            <h1>ヒマな日おしえて 日程調整</h1>
+            <h1>📅 日程調整ツール</h1>
             <div class="event-title" id="displayEventName"></div>
 
             <!-- URL共有セクション -->
@@ -806,6 +806,7 @@
 
         let eventData = {
             name: '',
+            displayName: '',
             participants: {},
             schedule: {}
         };
@@ -817,12 +818,21 @@
         function getEventIdFromUrl() {
             const params = new URLSearchParams(window.location.search);
             const eventParam = params.get('event');
-            // URLがデコードされている場合があるので、再度エンコード
             return eventParam ? encodeURIComponent(eventParam) : null;
         }
 
         function generateEventId(eventName) {
-            return encodeURIComponent(eventName);
+            const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0].replace('T', '_');
+            return encodeURIComponent(`${eventName}_${timestamp}`);
+        }
+
+        function extractDisplayName(eventId) {
+            const decoded = decodeURIComponent(eventId);
+            const parts = decoded.split('_');
+            if (parts.length >= 3) {
+                return parts.slice(0, -2).join('_');
+            }
+            return decoded;
         }
 
         function generateShareUrl(eventId) {
@@ -843,9 +853,6 @@
         }
 
         function loadUserSchedule(userName) {
-            console.log('loadUserSchedule called for:', userName);
-            console.log('Current eventData.schedule:', eventData.schedule);
-            
             if (!userName || !eventData.schedule) {
                 selectedDates = {};
                 renderCalendar();
@@ -860,8 +867,6 @@
                 }
             });
 
-            console.log('Selected dates for user:', selectedDates);
-
             if (eventData.participants && eventData.participants[userName]) {
                 document.getElementById('userComment').value = eventData.participants[userName].comment || '';
             }
@@ -870,19 +875,14 @@
         }
 
         function loadData(eventId) {
-            console.log('Loading event:', eventId);
             const dataRef = ref(database, `events/${eventId}`);
             onValue(dataRef, (snapshot) => {
                 const data = snapshot.val();
-                console.log('Loaded from Firebase:', data);
                 
                 if (data) {
                     eventData = data;
-                    console.log('eventData after load:', eventData);
-                    console.log('participants:', eventData.participants);
-                    console.log('schedule:', eventData.schedule);
-                    
-                    document.getElementById('displayEventName').textContent = eventData.name;
+                    const displayName = eventData.displayName || extractDisplayName(eventId);
+                    document.getElementById('displayEventName').textContent = displayName;
                     const shareUrl = generateShareUrl(eventId);
                     document.getElementById('shareUrl').value = shareUrl;
                     showMainScreen();
@@ -896,13 +896,13 @@
                     updateSummary();
                     updateParticipantsList();
                 } else {
-                    console.log('No data found, creating new event');
-                    const decodedName = decodeURIComponent(eventId);
-                    eventData.name = decodedName;
+                    const displayName = extractDisplayName(eventId);
+                    eventData.name = eventId;
+                    eventData.displayName = displayName;
                     eventData.participants = {};
                     eventData.schedule = {};
                     saveData(eventId).then(() => {
-                        document.getElementById('displayEventName').textContent = decodedName;
+                        document.getElementById('displayEventName').textContent = displayName;
                         const shareUrl = generateShareUrl(eventId);
                         document.getElementById('shareUrl').value = shareUrl;
                         showMainScreen();
@@ -928,6 +928,7 @@
                     .then(() => {
                         eventData = {
                             name: '',
+                            displayName: '',
                             participants: {},
                             schedule: {}
                         };
@@ -960,7 +961,8 @@
             const eventId = generateEventId(name);
             currentEventId = eventId;
 
-            eventData.name = name;
+            eventData.name = eventId;
+            eventData.displayName = name;
             if (!eventData.participants) eventData.participants = {};
             if (!eventData.schedule) eventData.schedule = {};
             
@@ -978,9 +980,6 @@
         }
 
         function updateParticipantsList() {
-            console.log('updateParticipantsList called');
-            console.log('participants:', eventData.participants);
-            
             const container = document.getElementById('participantsListMain');
             
             if (!eventData.participants || Object.keys(eventData.participants).length === 0) {
@@ -1030,9 +1029,6 @@
         }
 
         function renderCalendar() {
-            console.log('renderCalendar called');
-            console.log('selectedDates:', selectedDates);
-            
             const container = document.getElementById('calendarContainer');
             container.innerHTML = '';
 
@@ -1276,12 +1272,8 @@
                 };
             });
 
-            console.log('Saving to eventId:', currentEventId);
-            console.log('Data to save:', eventData);
-
             saveData(currentEventId)
                 .then(() => {
-                    console.log('Save successful');
                     const successMsg = document.getElementById('successMessage');
                     successMsg.classList.add('show');
                     
@@ -1315,7 +1307,6 @@
             
             if (eventId) {
                 currentEventId = eventId;
-                console.log('Initializing with event:', currentEventId);
                 loadData(eventId);
             } else {
                 showSetupScreen();
